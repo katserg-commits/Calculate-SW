@@ -1,0 +1,141 @@
+import { useState, useMemo, useEffect } from "react";
+
+/**
+ * ПРАВИЛА РАСЧЁТА (Siberian Wellness, Россия):
+ * ... (оставила как было)
+ */
+
+const RTO_PER_BALL = 40;
+const OTO_PER_BALL = 17;
+
+const RANKS = [ /* ... тот же массив ... */ ];
+
+const fmt = n => Math.round(n).toLocaleString("ru-RU") + " ₽";
+
+// === Дефолтные реалистичные значения для каждого ранга ===
+const DEFAULTS = [
+  { myBalls: 200, pkCount: 4, pkBalls: 70, bpCount: 2, bpBalls: 250, newClub200: 1 },   // bt1000
+  { myBalls: 250, pkCount: 6, pkBalls: 80, bpCount: 4, bpBalls: 400, newClub200: 2 },
+  { myBalls: 300, pkCount: 8, pkBalls: 90, bpCount: 6, bpBalls: 600, newClub200: 3 },
+  { myBalls: 350, pkCount: 10, pkBalls: 100, bpCount: 8, bpBalls: 900, newClub200: 4 },
+  { myBalls: 400, pkCount: 12, pkBalls: 110, bpCount: 12, bpBalls: 1200, newClub200: 5 },
+  { myBalls: 450, pkCount: 15, pkBalls: 120, bpCount: 15, bpBalls: 1800, newClub200: 6 },
+  { myBalls: 500, pkCount: 18, pkBalls: 130, bpCount: 20, bpBalls: 2500, newClub200: 7 },
+  { myBalls: 600, pkCount: 22, pkBalls: 140, bpCount: 25, bpBalls: 3500, newClub200: 8 },
+];
+
+function Tip({ text }) { /* ... без изменений ... */ }
+function Flake({ size=32, color="#C9A84C", opacity=1 }) { /* ... */ }
+
+const card = { /* ... */ };
+const lbl = { /* ... */ };
+
+function Slider({ label, tip, min, max, step=1, value, onChange, color="#C9A84C", sub }) {
+  // ... без изменений
+}
+
+function InfoBox({ color="#2ABFBF", children }) { /* ... */ }
+
+/* ─── Главный компонент ──────────────────────────────────────── */
+
+export default function SWCalculator() {
+  const [rankIdx, setRankIdx] = useState(0);
+  const [myBalls, setMyBalls] = useState(200);
+  const [pkCount, setPkCount] = useState(5);
+  const [pkBalls, setPkBalls] = useState(80);
+  const [bpCount, setBpCount] = useState(2);
+  const [bpBalls, setBpBalls] = useState(200);
+  const [newClub200, setNewClub200] = useState(2);
+
+  const rank = RANKS[rankIdx];
+
+  // Автоподстановка реалистичных значений при смене ранга
+  useEffect(() => {
+    const def = DEFAULTS[rankIdx] || DEFAULTS[0];
+    setMyBalls(def.myBalls);
+    setPkCount(def.pkCount);
+    setPkBalls(def.pkBalls);
+    setBpCount(def.bpCount);
+    setBpBalls(def.bpBalls);
+    setNewClub200(def.newClub200);
+  }, [rankIdx]);
+
+  /* === РАСЧЁТ === */
+  const calc = useMemo(() => {
+    const myRto = myBalls * RTO_PER_BALL;
+    const pkCbPct = pkBalls >= 100 ? 0.15 : pkBalls >= 50 ? 0.10 : 0.05;
+    const pkRto = pkBalls * RTO_PER_BALL;
+
+    const cashback = myRto * 0.25;
+    const pkRetail = pkCount * pkRto * (0.25 - pkCbPct);
+    const loyalty = (myRto + pkCount * pkRto) * 0.05;
+    const totalLoBalls = myBalls + pkCount * pkBalls;
+    const wholesale = totalLoBalls * OTO_PER_BALL * (rank.pct / 100);
+    const structure = bpCount * bpBalls * OTO_PER_BALL * (rank.pct / 100);
+    const bizBonus = newClub200 * 2000;
+
+    const total = cashback + pkRetail + loyalty + wholesale + structure + bizBonus;
+
+    return { 
+      cashback, pkRetail, loyalty, wholesale, structure, bizBonus, total,
+      // проценты для визуала
+      percents: {
+        cashback: total > 0 ? Math.round(cashback / total * 100) : 0,
+        pkRetail: total > 0 ? Math.round(pkRetail / total * 100) : 0,
+        loyalty: total > 0 ? Math.round(loyalty / total * 100) : 0,
+        wholesale: total > 0 ? Math.round(wholesale / total * 100) : 0,
+        structure: total > 0 ? Math.round(structure / total * 100) : 0,
+        bizBonus: total > 0 ? Math.round(bizBonus / total * 100) : 0,
+      }
+    };
+  }, [rank, myBalls, pkCount, pkBalls, bpCount, bpBalls, newClub200]);
+
+  const pctBar = ((rankIdx + 1) / RANKS.length) * 100;
+
+  return (
+    <div style={{ /* весь стиль шапки и контейнера без изменений */ }}>
+      {/* ... вся шапка и пояснения без изменений ... */}
+
+      {/* РАНГ — без изменений, только select и снежинки */}
+
+      {/* ЛИЧНЫЕ ПОКУПКИ, КЛИЕНТЫ, КОМАНДА, BUSINESS BONUS — без изменений */}
+
+      {/* ИТОГ */}
+      <div style={{background:"linear-gradient(135deg,#1A1F3C,#12162B)",
+        border:"2px solid #C9A84C", borderRadius:20, padding:"22px 20px",
+        marginBottom:14, position:"relative", overflow:"hidden"}}>
+        
+        {/* ... заголовок и большая сумма без изменений ... */}
+
+        <div style={{borderTop:"1px solid #2A3060", paddingTop:12}}>
+          <div style={{fontSize:11,color:"#5A6A8A",marginBottom:8,textTransform:"uppercase",letterSpacing:".07em"}}>
+            Из чего складывается
+          </div>
+          
+          {[
+            { l:"Кэшбэк с личных покупок (25% РТО)", v:calc.cashback, p:calc.percents.cashback, t:`${myBalls} бал × ${RTO_PER_BALL} ₽ × 25%` },
+            { l:"Доход с покупок клиентов", v:calc.pkRetail, p:calc.percents.pkRetail, t:`(25% − кэшбэк ПК) × РТО клиентов` },
+            { l:"Бонус лояльности (5% суммарного РТО)", v:calc.loyalty, p:calc.percents.loyalty, t:"5% от РТО твоих + клиентов" },
+            { l:"Оптовая премия (ЛО+ЛО ПК)", v:calc.wholesale, p:calc.percents.wholesale, t:`${totalLoBalls} бал × 17 ₽ × ${rank.pct}%` },
+            { l:"Премия с веток команды", v:calc.structure, p:calc.percents.structure, t:`${bpCount} × ${bpBalls} бал × 17 ₽ × ${rank.pct}%` },
+            { l:"Business Bonus", v:calc.bizBonus, p:calc.percents.bizBonus, t:`${newClub200} чел. × 2 000 ₽` },
+          ].map(({l, v, p, t}) => (
+            <div key={l} style={{display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 0", borderBottom:"1px solid #1E2550"}}>
+              <span style={{fontSize:12, color:"#8A9CC8", display:"flex", alignItems:"center", flex:1}}>
+                {l} <Tip text={t} />
+              </span>
+              <div style={{textAlign:"right", minWidth:110}}>
+                <span style={{fontSize:14, fontWeight:700, color: v>0 ? "#2ABFBF" : "#4A5580"}}>
+                  {fmt(v)}
+                </span>
+                <div style={{fontSize:11, color:"#5A6A8A"}}>{p}%</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ... предупреждение и футер без изменений ... */}
+    </div>
+  );
+}
